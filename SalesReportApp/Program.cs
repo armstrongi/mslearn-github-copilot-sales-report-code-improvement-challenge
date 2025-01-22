@@ -10,10 +10,8 @@ namespace ReportGenerator
             // call the GenerateSalesData method
             SalesData[] salesData = report.GenerateSalesData();
 
-
             // call the QuarterlySalesReport method
             report.QuarterlySalesReport(salesData);
-
         }
 
         /* public struct SalesData includes the following fields: date sold, department name, product ID, quantity sold, unit price */
@@ -30,13 +28,13 @@ namespace ReportGenerator
 
         public struct ProdDepartments
         {
-            public static string[] departmentNames = { "Men's Clothing", "Women's Clothing", "Children's Clothing", "Accessories", "Footwear", "Outerwear", "Sportswear", "Undergarments" };
-            public static string[] departmentAbbreviations = { "MENS", "WOMN", "CHLD", "ACCS", "FOOT", "OUTR", "SPRT", "UNDR" };
+            public static string[] departmentNames = ["Men's Clothing", "Women's Clothing", "Children's Clothing", "Accessories", "Footwear", "Outerwear", "Sportswear", "Undergarments"];
+            public static string[] departmentAbbreviations = ["MENS", "WOMN", "CHLD", "ACCS", "FOOT", "OUTR", "SPRT", "UNDR"];
         }
 
         public struct ManufacturingSites
         {
-            public static string[] manufacturingSites = { "US1", "US2", "US3", "UK1", "UK2", "UK3", "JP1", "JP2", "JP3", "CA1" };
+            public static string[] manufacturingSites = ["US1", "US2", "US3", "UK1", "UK2", "UK3", "JP1", "JP2", "JP3", "CA1"];
         }
 
         /* the GenerateSalesData method returns 1000 SalesData records. It assigns random values to each field of the data structure */
@@ -49,16 +47,6 @@ namespace ReportGenerator
             {
                 salesData[i].dateSold = new DateOnly(2023, random.Next(1, 13), random.Next(1, 29));
                 salesData[i].departmentName = ProdDepartments.departmentNames[random.Next(0, ProdDepartments.departmentNames.Length)];
-
-                // int indexOfDept = Array.IndexOf(ProdDepartments.departmentNames, salesData[i].departmentName);
-                // string deptAbb = ProdDepartments.departmentAbbreviations[indexOfDept];
-                // string firstDigit = (indexOfDept + 1).ToString();
-                // string nextTwoDigits = random.Next(1, 100).ToString("D2");
-                // string sizeCode = new string[] { "XS", "S", "M", "L", "XL" }[random.Next(0, 5)];
-                // string colorCode = new string[] { "BK", "BL", "GR", "RD", "YL", "OR", "WT", "GY" }[random.Next(0, 8)];
-                // string manufacturingSite = ManufacturingSites.manufacturingSites[random.Next(0, ManufacturingSites.manufacturingSites.Length)];
-
-                // salesData[i].productID = $"{deptAbb}-{firstDigit}{nextTwoDigits}-{sizeCode}-{colorCode}-{manufacturingSite}";
                 salesData[i].productID = ConstructProductId(salesData[i], random);
                 salesData[i].quantitySold = random.Next(1, 101);
                 salesData[i].unitPrice = random.Next(25, 300) + random.NextDouble();
@@ -108,20 +96,20 @@ namespace ReportGenerator
         public void QuarterlySalesReport(SalesData[] salesData)
         {
             // create a dictionary to store the quarterly sales data
-            Dictionary<string, double> quarterlySales = new Dictionary<string, double>();
-            Dictionary<string, double> quarterlyProfit = new Dictionary<string, double>();
-            Dictionary<string, double> quarterlyProfitPercentage = new Dictionary<string, double>();
+            var quarterlySales = new Dictionary<string, double>();
+            var quarterlyProfit = new Dictionary<string, double>();
+            var quarterlyProfitPercentage = new Dictionary<string, double>();
 
             // create a dictionary to store the quarterly sales data by department
-            Dictionary<string, Dictionary<string, double>> quarterlySalesByDepartment = new Dictionary<string, Dictionary<string, double>>();
-            Dictionary<string, Dictionary<string, double>> quarterlyProfitByDepartment = new Dictionary<string, Dictionary<string, double>>();
-            Dictionary<string, Dictionary<string, double>> quarterlyProfitPercentageByDepartment = new Dictionary<string, Dictionary<string, double>>();
+            var quarterlySalesByDepartment = new Dictionary<string, Dictionary<string, double>>();
+            var quarterlyProfitByDepartment = new Dictionary<string, Dictionary<string, double>>();
+            var quarterlyProfitPercentageByDepartment = new Dictionary<string, Dictionary<string, double>>();
 
             // create a dictionary to store the top 3 sales orders by quarter
-            Dictionary<string, List<SalesData>> top3SalesOrdersByQuarter = new Dictionary<string, List<SalesData>>();
+            var top3SalesOrdersByQuarter = new Dictionary<string, List<SalesData>>();
 
             // create a dictionary to store the quarterly top profit for product numbers
-            Dictionary<string, Dictionary<string, (int, double, double, double, double)>> quarterlyTopProfitForProductNumbers = new Dictionary<string, Dictionary<string, (int, double, double, double, double)>>();
+            var quarterlyTopProfitForProductNumbers = new Dictionary<string, Dictionary<string, (int, double, double, double, double)>>();            
 
             // iterate through the sales data
             foreach (SalesData data in salesData)
@@ -168,7 +156,7 @@ namespace ReportGenerator
                     quarterlySales.Add(quarter, totalSales);
                     quarterlyProfit.Add(quarter, profit);
                 }
-
+                
                 if (!quarterlyProfitPercentage.ContainsKey(quarter))
                 {
                     quarterlyProfitPercentage.Add(quarter, profitPercentage);
