@@ -26,6 +26,24 @@ namespace ReportGenerator
             public int volumeDiscount;
         }
 
+        public struct QuarterlySalesData
+        {
+            public string Quarter;
+            public double Sales;
+            public double Profit;
+            public double ProfitPercentage;
+        }
+
+        /*
+        public struct QuarterlySalesDataByDepartment
+        {
+            public string Quarter;
+            public string Department;
+            public double Sales;
+            public double Profit;
+            public double ProfitPercentage;
+        }
+        */
         public struct ProdDepartments
         {
             public static string[] departmentNames = ["Men's Clothing", "Women's Clothing", "Children's Clothing", "Accessories", "Footwear", "Outerwear", "Sportswear", "Undergarments"];
@@ -95,15 +113,17 @@ namespace ReportGenerator
 
         public void QuarterlySalesReport(SalesData[] salesData)
         {
-            // create a dictionary to store the quarterly sales data
-            var quarterlySales = new Dictionary<string, double>();
-            var quarterlyProfit = new Dictionary<string, double>();
-            var quarterlyProfitPercentage = new Dictionary<string, double>();
+            QuarterlySalesData[] quarterlySalesData = new QuarterlySalesData[4];
+
+            // Initialize the quarterly sales data for each quarter            
+            InitializeQuarterlySalesData(quarterlySalesData);
 
             // create a dictionary to store the quarterly sales data by department
             var quarterlySalesByDepartment = new Dictionary<string, Dictionary<string, double>>();
             var quarterlyProfitByDepartment = new Dictionary<string, Dictionary<string, double>>();
             var quarterlyProfitPercentageByDepartment = new Dictionary<string, Dictionary<string, double>>();
+
+            //QuarterlySalesDataByDepartment[] quarterlySalesDataByDepartment = new QuarterlySalesDataByDepartment[ProdDepartments.departmentNames.Length * 4];
 
             // create a dictionary to store the top 3 sales orders by quarter
             var top3SalesOrdersByQuarter = new Dictionary<string, List<SalesData>>();
@@ -143,24 +163,10 @@ namespace ReportGenerator
                 if (!quarterlyProfitPercentageByDepartment[quarter].ContainsKey(data.departmentName))
                 {
                     quarterlyProfitPercentageByDepartment[quarter].Add(data.departmentName, profitPercentage);
-                }
+                }                
 
-                // calculate the total sales and profit for each quarter
-                if (quarterlySales.ContainsKey(quarter))
-                {
-                    quarterlySales[quarter] += totalSales;
-                    quarterlyProfit[quarter] += profit;
-                }
-                else
-                {
-                    quarterlySales.Add(quarter, totalSales);
-                    quarterlyProfit.Add(quarter, profit);
-                }
-                
-                if (!quarterlyProfitPercentage.ContainsKey(quarter))
-                {
-                    quarterlyProfitPercentage.Add(quarter, profitPercentage);
-                }
+                // poulate sales, profit and profit percentage of quarterlySalesData
+                AccumulateQuarterlySalesData(quarterlySalesData, quarter, totalSales, profit);
 
                 // add the sales data to the top 3 sales orders by quarter
                 if (!top3SalesOrdersByQuarter.ContainsKey(quarter))
@@ -211,20 +217,17 @@ namespace ReportGenerator
             Console.WriteLine("----------------------");
 
             // sort the quarterly sales by key (quarter)
-            var sortedQuarterlySales = quarterlySales.OrderBy(q => q.Key);
+            //var sortedQuarterlySales = quarterlySales.OrderBy(q => q.Key);
 
-            foreach (KeyValuePair<string, double> quarter in sortedQuarterlySales)
+            //foreach (KeyValuePair<string, double> quarter in sortedQuarterlySales)
+            foreach (var quarter in quarterlySalesData)
             {
-                // format the sales amount as currency using regional settings
-                string formattedSalesAmount = quarter.Value.ToString("C");
-                string formattedProfitAmount = quarterlyProfit[quarter.Key].ToString("C");
-                string formattedProfitPercentage = quarterlyProfitPercentage[quarter.Key].ToString("F2");
-
-                Console.WriteLine("{0}: Sales: {1}, Profit: {2}, Profit Percentage: {3}%", quarter.Key, formattedSalesAmount, formattedProfitAmount, formattedProfitPercentage);
+                // Display the quarterly sales data                
+                ReportQuarterSalesData(quarter);
 
                 // display the quarterly sales, profit, and profit percentage by department
                 Console.WriteLine("By Department:");
-                var sortedQuarterlySalesByDepartment = quarterlySalesByDepartment[quarter.Key].OrderBy(d => d.Key);
+                var sortedQuarterlySalesByDepartment = quarterlySalesByDepartment[quarter.Quarter].OrderBy(d => d.Key);
 
                 // Print table headers
                 Console.WriteLine("┌───────────────────────┬───────────────────┬───────────────────┬───────────────────┐");
@@ -234,8 +237,8 @@ namespace ReportGenerator
                 foreach (KeyValuePair<string, double> department in sortedQuarterlySalesByDepartment)
                 {
                     string formattedDepartmentSalesAmount = department.Value.ToString("C");
-                    string formattedDepartmentProfitAmount = quarterlyProfitByDepartment[quarter.Key][department.Key].ToString("C");
-                    string formattedDepartmentProfitPercentage = quarterlyProfitPercentageByDepartment[quarter.Key][department.Key].ToString("F2");
+                    string formattedDepartmentProfitAmount = quarterlyProfitByDepartment[quarter.Quarter][department.Key].ToString("C");
+                    string formattedDepartmentProfitPercentage = quarterlyProfitPercentageByDepartment[quarter.Quarter][department.Key].ToString("F2");
 
                     Console.WriteLine("│ {0,-22}│ {1,17} │ {2,17} │ {3,17} │", department.Key, formattedDepartmentSalesAmount, formattedDepartmentProfitAmount, formattedDepartmentProfitPercentage);
                 }
@@ -245,7 +248,7 @@ namespace ReportGenerator
 
                 // display the top 3 sales orders for the quarter
                 Console.WriteLine("Top 3 Sales Orders:");
-                var top3SalesOrders = top3SalesOrdersByQuarter[quarter.Key];
+                var top3SalesOrders = top3SalesOrdersByQuarter[quarter.Quarter];
 
                 // Print table headers
                 Console.WriteLine("┌───────────────────────┬───────────────────┬───────────────────┬───────────────────┬───────────────────┬───────────────────┐");
@@ -266,7 +269,7 @@ namespace ReportGenerator
 
                 // display the quarterly top profit for product numbers
                 Console.WriteLine("Quarterly Top Profit for Product Numbers:");
-                var quarterlyTopProfit = quarterlyTopProfitForProductNumbers[quarter.Key];
+                var quarterlyTopProfit = quarterlyTopProfitForProductNumbers[quarter.Quarter];
 
                 // Sort the quarterly top profit by profit in descending order
                 var sortedQuarterlyTopProfit = quarterlyTopProfit.OrderByDescending(p => p.Value.Item4).Take(3);
@@ -306,6 +309,52 @@ namespace ReportGenerator
             {
                 return "Q4";
             }
+        }
+
+        public static int GetQuarterIndex(string quarter)
+        {
+            switch (quarter)
+            {
+                case "Q1":
+                    return 0;
+                case "Q2":
+                    return 1;
+                case "Q3":
+                    return 2;
+                case "Q4":
+                    return 3;
+                default:
+                    return -1;
+            }
+        }
+
+        public static void InitializeQuarterlySalesData(QuarterlySalesData[] quarterlySalesData)
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                quarterlySalesData[i].Quarter = "Q" + (i + 1).ToString();
+                quarterlySalesData[i].Sales = 0;
+                quarterlySalesData[i].Profit = 0;
+                quarterlySalesData[i].ProfitPercentage = 0;
+            }
+        }
+
+        public static void AccumulateQuarterlySalesData(QuarterlySalesData[] quarterlySalesData, string quarter, double totalSales, double profit)
+        {
+            int quarterIndex = GetQuarterIndex(quarter);
+            quarterlySalesData[quarterIndex].Sales += totalSales;
+            quarterlySalesData[quarterIndex].Profit += profit;
+            quarterlySalesData[quarterIndex].ProfitPercentage = quarterlySalesData[quarterIndex].Profit / quarterlySalesData[quarterIndex].Sales * 100;
+        }
+
+        public static void ReportQuarterSalesData(QuarterlySalesData quarter)
+        {
+            // format the sales amount as currency using regional settings
+            string formattedSalesAmount = quarter.Sales.ToString("C");
+            string formattedProfitAmount = quarter.Profit.ToString("C");
+            string formattedProfitPercentage = quarter.ProfitPercentage.ToString("F2");
+
+            Console.WriteLine("{0}: Sales: {1}, Profit: {2}, Profit Percentage: {3}%", quarter.Quarter, formattedSalesAmount, formattedProfitAmount, formattedProfitPercentage);
         }
     }
 }
