@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("APL2007M4")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+02191f484d5eae45544b70e74df5c51c770906d1")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+7ac7244031ecbfa6c52accafd0c3b8bed429e166")]
 [assembly: System.Reflection.AssemblyProductAttribute("APL2007M4")]
 [assembly: System.Reflection.AssemblyTitleAttribute("APL2007M4")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
