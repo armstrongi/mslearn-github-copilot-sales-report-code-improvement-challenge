@@ -1,3 +1,4 @@
+using System.Diagnostics.Contracts;
 using System.Globalization;
 
 namespace ReportGenerator
@@ -9,7 +10,13 @@ namespace ReportGenerator
             // Set the culture to en-US
             CultureInfo.DefaultThreadCurrentCulture = new CultureInfo("en-US");
             CultureInfo.DefaultThreadCurrentUICulture = new CultureInfo("en-US");
-            
+
+            if (!IsUserAuthenticated())
+            {
+                Console.WriteLine("Access denied. User is not authenticated.");
+                return;
+            }
+
             // create a new instance of the class
             QuarterlyIncomeReport report = new QuarterlyIncomeReport();
 
@@ -18,6 +25,13 @@ namespace ReportGenerator
 
             // call the QuarterlySalesReport method
             report.QuarterlySalesReport(salesData);
+        }
+
+        private static bool IsUserAuthenticated()
+        {
+            // Implement your authentication logic here
+            // For demonstration purposes, let's assume the user is authenticated
+            return true;
         }
 
         /* public struct SalesData includes the following fields: date sold, department name, product ID, quantity sold, unit price */
@@ -113,53 +127,14 @@ namespace ReportGenerator
             // create an array to hold the quarterly sales data by department            
             QuarterlySalesDataByDepartment[] quarterlySalesDataByDepartment = new QuarterlySalesDataByDepartment[ProdDepartments.departmentNames.Length * 4];
 
-            // Initialize the quarterly sales data for each quarter by department            
-            InitializeQuarterlySalesDataByDepartment(quarterlySalesDataByDepartment);            
-
             // create a dictionary to store the quarterly top profit for product numbers
             var quarterlyTopProfitForProductNumbers = new Dictionary<string, Dictionary<string, (int, double, double, double, double)>>();            
-
-            // iterate through the sales data
-            foreach (SalesData data in salesData)
-            {
-                // calculate the total sales for each quarter
-                string quarter = GetQuarter(data.dateSold.Month);
-                double totalSales = data.quantitySold * data.unitPrice;
-                double totalCost = data.quantitySold * data.baseCost;
-                double profit = totalSales - totalCost;
-                double profitPercentage = (profit / totalSales) * 100;                
-                
-                // accumulate the quarterly sales data by department
-                AccumulateQuarterlySalesDataByDepartment(quarterlySalesDataByDepartment, quarter, data.departmentName, totalSales, profit);                                
-                
-                // accumulate the quarterly top profit for product numbers
-                AccumulateTopProfitProductNumbers(quarterlyTopProfitForProductNumbers, data, quarter);
-            }            
+            
+            // summarise the sales data
+            SummariseSalesData(salesData, quarterlySalesDataByDepartment, quarterlyTopProfitForProductNumbers);
 
             // display the quarterly sales report
-            Console.WriteLine("Quarterly Sales Report");
-            Console.WriteLine("----------------------");
-
-            // create and populate a variable to hold each quarter in salesData
-            var salesDataByQuarter = salesData
-                .GroupBy(data => GetQuarter(data.dateSold.Month))
-                .OrderBy(group => group.Key)
-                .ToList();            
-
-            // iterate through the quarterly sales data
-            foreach (var quarterGroup in salesDataByQuarter)
-            {
-                string quarter = quarterGroup.Key;
-                
-                // display the quarterly sales, profit, and profit percentage by department                
-                ReportQuarterSalesDataByDepartment(quarterlySalesDataByDepartment, quarter);
-
-                // display the top 3 sales orders for the quarter                
-                ReportTop3SalesData(salesData, quarter);
-
-                // display the quarterly top profit for product numbers
-                ReportTopProfitProductNumbers(quarterlyTopProfitForProductNumbers[quarter], quarter);
-            }
+            DisplaySalesReports(salesData, quarterlySalesDataByDepartment, quarterlyTopProfitForProductNumbers);
         }
 
         public static string GetQuarter(int month)
@@ -192,10 +167,8 @@ namespace ReportGenerator
                     return 1;
                 case "Q3":
                     return 2;
-                case "Q4":
-                    return 3;
                 default:
-                    return -1;
+                    return 3;
             }
         }        
 
@@ -218,13 +191,46 @@ namespace ReportGenerator
 
         public static void AccumulateQuarterlySalesDataByDepartment(QuarterlySalesDataByDepartment[] quarterlySalesDataByDepartment, string quarter, string department, double totalSales, double profit)
         {
-            int quarterIndex = GetQuarterIndex(quarter);
-            int departmentIndex = Array.IndexOf(ProdDepartments.departmentNames, department);
-            int index = quarterIndex * ProdDepartments.departmentNames.Length + departmentIndex;
-        
-            quarterlySalesDataByDepartment[index].Sales += totalSales;
-            quarterlySalesDataByDepartment[index].Profit += profit;
-            quarterlySalesDataByDepartment[index].ProfitPercentage = quarterlySalesDataByDepartment[index].Profit / quarterlySalesDataByDepartment[index].Sales * 100;
+            try
+            {
+                if (quarterlySalesDataByDepartment == null)
+                {
+                    throw new ArgumentNullException(nameof(quarterlySalesDataByDepartment), "Quarterly sales data by department cannot be null.");
+                }
+
+                if (string.IsNullOrEmpty(quarter))
+                {
+                    throw new ArgumentException("Quarter cannot be null or empty.", nameof(quarter));
+                }
+
+                if (string.IsNullOrEmpty(department))
+                {
+                    throw new ArgumentException("Department cannot be null or empty.", nameof(department));
+                }
+
+                if (totalSales < 0)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(totalSales), "Total sales cannot be negative.");
+                }                
+
+                int quarterIndex = GetQuarterIndex(quarter);
+                int departmentIndex = Array.IndexOf(ProdDepartments.departmentNames, department);
+
+                if (departmentIndex == -1)
+                {
+                    throw new ArgumentException("Invalid department name.", nameof(department));
+                }
+
+                int index = quarterIndex * ProdDepartments.departmentNames.Length + departmentIndex;
+            
+                quarterlySalesDataByDepartment[index].Sales += totalSales;
+                quarterlySalesDataByDepartment[index].Profit += profit;
+                quarterlySalesDataByDepartment[index].ProfitPercentage = quarterlySalesDataByDepartment[index].Profit / quarterlySalesDataByDepartment[index].Sales * 100;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error accumulating quarterly sales data by department: {ex.Message}");
+            }
         }        
 
         public static void ReportQuarterSalesDataByDepartment(QuarterlySalesDataByDepartment[] quarterlySalesDataByDepartment, string quarter)
@@ -300,31 +306,68 @@ namespace ReportGenerator
 
         public static void AccumulateTopProfitProductNumbers(Dictionary<string, Dictionary<string, (int, double, double, double, double)>> quarterlyTopProfitForProductNumbers, SalesData data, string quarter)
         {
-            string[,] deconstructedProductId = DeconstructProductId(data.productID);
-            string productSerialNumber = deconstructedProductId[0, 1] + "-" + deconstructedProductId[1, 1] + "-ss-cc-mmm";
-        
-            double totalSales = data.quantitySold * data.unitPrice;
-            double profit = totalSales - (data.quantitySold * data.baseCost);
-            double profitPercentage = (profit / totalSales) * 100;
-        
-            if (!quarterlyTopProfitForProductNumbers.ContainsKey(quarter))
+            try
             {
-                quarterlyTopProfitForProductNumbers.Add(quarter, new Dictionary<string, (int, double, double, double, double)>());
+                if (quarterlyTopProfitForProductNumbers == null)
+                {
+                    throw new ArgumentNullException(nameof(quarterlyTopProfitForProductNumbers), "Quarterly top profit for product numbers cannot be null.");
+                }
+
+                if (string.IsNullOrEmpty(data.productID))
+                {
+                    throw new ArgumentNullException(nameof(data), "Product ID cannot be null or empty.");
+                }
+
+                if (data.quantitySold < 0)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(data.quantitySold), "Quantity sold must not be negative.");
+                }
+
+                if (data.unitPrice <= 0)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(data.unitPrice), "Unit price must be greater than zero.");
+                }
+
+                if (data.baseCost <= 0)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(data.baseCost), "Base cost must be greater than zero.");
+                }                
+
+                if (string.IsNullOrEmpty(quarter))
+                {
+                    throw new ArgumentException("Quarter cannot be null or empty.", nameof(quarter));
+                }
+
+                string[,] deconstructedProductId = DeconstructProductId(data.productID);
+                string productSerialNumber = deconstructedProductId[0, 1] + "-" + deconstructedProductId[1, 1] + "-ss-cc-mmm";
+            
+                double totalSales = data.quantitySold * data.unitPrice;
+                double profit = totalSales - (data.quantitySold * data.baseCost);
+                double profitPercentage = (profit / totalSales) * 100;
+            
+                if (!quarterlyTopProfitForProductNumbers.ContainsKey(quarter))
+                {
+                    quarterlyTopProfitForProductNumbers.Add(quarter, new Dictionary<string, (int, double, double, double, double)>());
+                }
+            
+                if (quarterlyTopProfitForProductNumbers[quarter].ContainsKey(productSerialNumber))
+                {
+                    var (unitsSold, totalSalesAmount, unitCost, totalProfit, innerProfitPercentage) = quarterlyTopProfitForProductNumbers[quarter][productSerialNumber];
+                    unitsSold += data.quantitySold;
+                    totalSalesAmount += totalSales;
+                    unitCost = totalSalesAmount / unitsSold;
+                    totalProfit += profit;
+                    innerProfitPercentage = (totalProfit / totalSalesAmount) * 100;
+                    quarterlyTopProfitForProductNumbers[quarter][productSerialNumber] = (unitsSold, totalSalesAmount, unitCost, totalProfit, innerProfitPercentage);
+                }
+                else
+                {
+                    quarterlyTopProfitForProductNumbers[quarter].Add(productSerialNumber, (data.quantitySold, totalSales, data.baseCost, profit, profitPercentage));
+                }
             }
-        
-            if (quarterlyTopProfitForProductNumbers[quarter].ContainsKey(productSerialNumber))
+            catch (Exception ex)
             {
-                var (unitsSold, totalSalesAmount, unitCost, totalProfit, innerProfitPercentage) = quarterlyTopProfitForProductNumbers[quarter][productSerialNumber];
-                unitsSold += data.quantitySold;
-                totalSalesAmount += totalSales;
-                unitCost = totalSalesAmount / unitsSold;
-                totalProfit += profit;
-                innerProfitPercentage = (totalProfit / totalSalesAmount) * 100;
-                quarterlyTopProfitForProductNumbers[quarter][productSerialNumber] = (unitsSold, totalSalesAmount, unitCost, totalProfit, innerProfitPercentage);
-            }
-            else
-            {
-                quarterlyTopProfitForProductNumbers[quarter].Add(productSerialNumber, (data.quantitySold, totalSales, data.baseCost, profit, profitPercentage));
+                Console.WriteLine($"Error accumulating top profit product numbers: {ex.Message}");
             }
         }
 
@@ -351,6 +394,53 @@ namespace ReportGenerator
 
             Console.WriteLine("└───────────────────────┴───────────────────┴───────────────────┴───────────────────┴───────────────────┴───────────────────┘");
             Console.WriteLine();
+        }
+
+        public void DisplaySalesReports(SalesData[] salesData, QuarterlySalesDataByDepartment[] quarterlySalesDataByDepartment, Dictionary<string, Dictionary<string, (int, double, double, double, double)>> quarterlyTopProfitForProductNumbers)
+        {
+            // create and populate a variable to hold each quarter in salesData
+            var salesDataByQuarter = salesData
+                .GroupBy(data => GetQuarter(data.dateSold.Month))
+                .OrderBy(group => group.Key)
+                .ToList();            
+
+            // iterate through the quarterly sales data
+            foreach (var quarterGroup in salesDataByQuarter)
+            {
+                string quarter = quarterGroup.Key;
+                
+                // display the quarterly sales, profit, and profit percentage by department                
+                ReportQuarterSalesDataByDepartment(quarterlySalesDataByDepartment, quarter);
+
+                // display the top 3 sales orders for the quarter                
+                ReportTop3SalesData(salesData, quarter);
+
+                // display the quarterly top profit for product numbers
+                ReportTopProfitProductNumbers(quarterlyTopProfitForProductNumbers[quarter], quarter);
+            }
+        }
+
+        public void SummariseSalesData(SalesData[] salesData, QuarterlySalesDataByDepartment[] quarterlySalesDataByDepartment, Dictionary<string, Dictionary<string, (int, double, double, double, double)>> quarterlyTopProfitForProductNumbers)
+        {
+            // Initialize the quarterly sales data for each quarter by department            
+            InitializeQuarterlySalesDataByDepartment(quarterlySalesDataByDepartment);                        
+
+            // iterate through the sales data
+            foreach (SalesData data in salesData)
+            {
+                // calculate the total sales for each quarter
+                string quarter = GetQuarter(data.dateSold.Month);
+                double totalSales = data.quantitySold * data.unitPrice;
+                double totalCost = data.quantitySold * data.baseCost;
+                double profit = totalSales - totalCost;
+                double profitPercentage = (profit / totalSales) * 100;                
+                
+                // accumulate the quarterly sales data by department
+                AccumulateQuarterlySalesDataByDepartment(quarterlySalesDataByDepartment, quarter, data.departmentName, totalSales, profit);                                
+                
+                // accumulate the quarterly top profit for product numbers
+                AccumulateTopProfitProductNumbers(quarterlyTopProfitForProductNumbers, data, quarter);
+            }
         }
     }
 }
