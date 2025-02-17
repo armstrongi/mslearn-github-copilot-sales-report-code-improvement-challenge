@@ -1,9 +1,15 @@
+using System.Globalization;
+
 namespace ReportGenerator
 {
     class QuarterlyIncomeReport
     {
         static void Main(string[] args)
         {
+            // Set the culture to en-US
+            CultureInfo.DefaultThreadCurrentCulture = new CultureInfo("en-US");
+            CultureInfo.DefaultThreadCurrentUICulture = new CultureInfo("en-US");
+            
             // create a new instance of the class
             QuarterlyIncomeReport report = new QuarterlyIncomeReport();
 
@@ -126,30 +132,7 @@ namespace ReportGenerator
                 // accumulate the quarterly sales data by department
                 AccumulateQuarterlySalesDataByDepartment(quarterlySalesDataByDepartment, quarter, data.departmentName, totalSales, profit);                                
                 
-                /*
-                string[,] deconstructedProductId = DeconstructProductId(data.productID);
-                string productSerialNumber = deconstructedProductId[0, 1] + "-" + deconstructedProductId[1, 1] + "-ss-cc-mmm";
-
-                if (!quarterlyTopProfitForProductNumbers.ContainsKey(quarter))
-                {
-                    quarterlyTopProfitForProductNumbers.Add(quarter, new Dictionary<string, (int, double, double, double, double)>());
-                }
-
-                if (quarterlyTopProfitForProductNumbers[quarter].ContainsKey(productSerialNumber))
-                {
-                    var (unitsSold, totalSalesAmount, unitCost, totalProfit, innerProfitPercentage) = quarterlyTopProfitForProductNumbers[quarter][productSerialNumber];
-                    unitsSold += data.quantitySold;
-                    totalSalesAmount += totalSales;
-                    unitCost = totalSalesAmount / unitsSold;
-                    totalProfit += profit;
-                    innerProfitPercentage = (totalProfit / totalSalesAmount) * 100;
-                    quarterlyTopProfitForProductNumbers[quarter][productSerialNumber] = (unitsSold, totalSalesAmount, unitCost, totalProfit, innerProfitPercentage);
-                }
-                else
-                {
-                    quarterlyTopProfitForProductNumbers[quarter].Add(productSerialNumber, (data.quantitySold, totalSales, data.baseCost, profit, profitPercentage));
-                }
-                */
+                // accumulate the quarterly top profit for product numbers
                 AccumulateTopProfitProductNumbers(quarterlyTopProfitForProductNumbers, data, quarter);
             }            
 
@@ -175,26 +158,7 @@ namespace ReportGenerator
                 ReportTop3SalesData(salesData, quarter);
 
                 // display the quarterly top profit for product numbers
-                Console.WriteLine(quarter + " Top Profit for Product Numbers:");
-                var quarterlyTopProfit = quarterlyTopProfitForProductNumbers[quarter];
-
-                // Sort the quarterly top profit by profit in descending order
-                var sortedQuarterlyTopProfit = quarterlyTopProfit.OrderByDescending(p => p.Value.Item4).Take(3);
-
-                // Print table headers
-                Console.WriteLine("┌───────────────────────┬───────────────────┬───────────────────┬───────────────────┬───────────────────┬───────────────────┐");
-                Console.WriteLine("│   Product Serial No   │    Units Sold     │   Total Sales     │    Unit Cost      │     Total Profit  │ Profit Percentage │");
-                Console.WriteLine("├───────────────────────┼───────────────────┼───────────────────┼───────────────────┼───────────────────┼───────────────────┤");
-
-                foreach (KeyValuePair<string, (int, double, double, double, double)> product in sortedQuarterlyTopProfit)
-                {
-                    var (unitsSold, totalSalesAmount, unitCost, totalProfit, profitPercentage) = product.Value;
-
-                    Console.WriteLine("│ {0,-22}│ {1,17} │ {2,17} │ {3,17} │ {4,17} │ {5,17} │", product.Key, unitsSold, totalSalesAmount.ToString("C"), unitCost.ToString("C"), totalProfit.ToString("C"), profitPercentage.ToString("F2"));
-                }
-
-                Console.WriteLine("└───────────────────────┴───────────────────┴───────────────────┴───────────────────┴───────────────────┴───────────────────┘");
-                Console.WriteLine();
+                ReportTopProfitProductNumbers(quarterlyTopProfitForProductNumbers[quarter], quarter);
             }
         }
 
@@ -327,7 +291,7 @@ namespace ReportGenerator
                 double orderProfit = orderTotalSales - (salesOrder.quantitySold * salesOrder.baseCost);
                 double orderProfitPercentage = (orderProfit / orderTotalSales) * 100;
 
-                Console.WriteLine("│ {0,-22}│ {1,17} │ {2,17} │ {3,17} │ {4,17} │ {5,17} │", salesOrder.productID, salesOrder.quantitySold, salesOrder.unitPrice.ToString("C"), orderTotalSales.ToString("C"), orderProfit.ToString("C"), orderProfitPercentage.ToString("F2"));
+                Console.WriteLine("│ {0,-22}│ {1,17} │ {2,17} │ {3,17} │ {4,17} │ {5,16}% │", salesOrder.productID, salesOrder.quantitySold, salesOrder.unitPrice.ToString("C"), orderTotalSales.ToString("C"), orderProfit.ToString("C"), orderProfitPercentage.ToString("F2"));
             }
 
             Console.WriteLine("└───────────────────────┴───────────────────┴───────────────────┴───────────────────┴───────────────────┴───────────────────┘");
@@ -362,6 +326,31 @@ namespace ReportGenerator
             {
                 quarterlyTopProfitForProductNumbers[quarter].Add(productSerialNumber, (data.quantitySold, totalSales, data.baseCost, profit, profitPercentage));
             }
+        }
+
+        public static void ReportTopProfitProductNumbers(Dictionary<string, (int, double, double, double, double)> quarterlyTopProfitForProductNumbers, string quarter)
+        {
+            // display the quarterly top profit for product numbers
+            Console.WriteLine(quarter + " Top Profit for Product Numbers:");
+            var quarterlyTopProfit = quarterlyTopProfitForProductNumbers;
+
+            // Sort the quarterly top profit by profit in descending order
+            var sortedQuarterlyTopProfit = quarterlyTopProfit.OrderByDescending(p => p.Value.Item4).Take(3);
+
+            // Print table headers
+            Console.WriteLine("┌───────────────────────┬───────────────────┬───────────────────┬───────────────────┬───────────────────┬───────────────────┐");
+            Console.WriteLine("│   Product Serial No   │    Units Sold     │   Total Sales     │    Unit Cost      │     Total Profit  │ Profit Percentage │");
+            Console.WriteLine("├───────────────────────┼───────────────────┼───────────────────┼───────────────────┼───────────────────┼───────────────────┤");
+
+            foreach (KeyValuePair<string, (int, double, double, double, double)> product in sortedQuarterlyTopProfit)
+            {
+                var (unitsSold, totalSalesAmount, unitCost, totalProfit, profitPercentage) = product.Value;
+
+                Console.WriteLine("│ {0,-22}│ {1,17} │ {2,17} │ {3,17} │ {4,17} │ {5,16}% │", product.Key, unitsSold, totalSalesAmount.ToString("C"), unitCost.ToString("C"), totalProfit.ToString("C"), profitPercentage.ToString("F2"));
+            }
+
+            Console.WriteLine("└───────────────────────┴───────────────────┴───────────────────┴───────────────────┴───────────────────┴───────────────────┘");
+            Console.WriteLine();
         }
     }
 }
